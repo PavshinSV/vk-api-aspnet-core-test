@@ -1,10 +1,9 @@
-﻿using System.ComponentModel.DataAnnotations.Schema;
+﻿using WebApplicationVKTest.Model.Entities;
 
-namespace WebApplicationVKTest.Model.Entities
+namespace WebApplicationVKTest.Controllers.Requests
 {
-    public class User
+    public class CreateUserRequest
     {
-        public long Id { get; set; }
         public string? Login { get; set; }
         public string? Password { get; set; }
         public string? Created_date { get; set; }
