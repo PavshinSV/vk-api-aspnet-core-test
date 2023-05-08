@@ -7,12 +7,12 @@ namespace WebApplicationVKTest.Controllers
 {
     [Route("api/[controller]")]
     [ApiController]
-    public class UserController: ControllerBase
+    public class UserController : ControllerBase
     {
         [HttpPost("create")]
         public async Task<ActionResult<int>> CreateAsync([FromBody] CreateUserRequest createUserRequest)
         {
-            using(ApplicationContext db = new ApplicationContext())
+            using (ApplicationContext db = new ApplicationContext())
             {
                 initDb();
                 int res = 0;
@@ -27,7 +27,7 @@ namespace WebApplicationVKTest.Controllers
 
                 var group = db.UserGroups.Where(p => p.id == newUser.User_group_id);
 
-                if (group.Count()==0)
+                if (group.Count() == 0)
                 {
                     return BadRequest(0);
                 }
@@ -47,32 +47,55 @@ namespace WebApplicationVKTest.Controllers
                 Thread.Sleep(5000);
                 return BadRequest(res);
             }
-            
+
         }
 
         [HttpGet("get-by-id")]
-        public async Task<ActionResult<User>> GetByIdAsync(long userId) 
-         {
+        public async Task<ActionResult<UserResponse>> GetByIdAsync(long userId)
+        {
             using (ApplicationContext db = new ApplicationContext())
             {
+                /**var response = from user in db.Users.Where(p => p.Id == userId)
+                               join gr in db.UserGroups on user.User_group_id equals gr.id
+                               join state in db.UserStates on user.User_state_id equals state.id
+                               select new
+                               {
+                                   userId = user.Id,
+                                   Login = user.Login,
+                                   Password = user.Password,
+                                   Created_date = user.Created_date,
+                                   GroupId = user.User_group_id,
+                                   GroupCode = gr.code,
+                                   GroupDescription = gr.description,
+                                   StateId = user.User_state_id,
+                                   StateCode = state.code,
+                                   StateDescription = state.description
+                               };*/
+
                 User user = await db.Users.FindAsync(userId);
                 if (user != null)
                 {
-                    return Ok(user);
+                    return Ok(CreateUserResponse(user));
                 }
                 return BadRequest(0);
             }
-         }
+        }
 
         [HttpGet("get-all")]
-        public async Task<ActionResult<IList<User>>> GetAllAsync()
+        public async Task<ActionResult<IList<UserResponse>>> GetAllAsync()
         {
             using (ApplicationContext db = new ApplicationContext())
             {
                 IList<User> list = await db.Users.ToListAsync();
                 if (list != null)
                 {
-                    return Ok(list);
+                    IList<UserResponse> response = new List<UserResponse>();
+                    foreach (User user in list)
+                    {
+                        UserResponse el = CreateUserResponse(user);
+                        response.Add(el);
+                    }
+                    return Ok(response);
                 }
                 return BadRequest(0);
             }
@@ -109,6 +132,30 @@ namespace WebApplicationVKTest.Controllers
                     return -1;
                 }
             }
+        }
+
+        private UserResponse CreateUserResponse(User user)
+        {
+            UserResponse response;
+            using (ApplicationContext db = new ApplicationContext())
+            {
+                UserGroup group = db.UserGroups.Find(user.User_group_id);
+                UserState state = db.UserStates.Find(user.User_state_id);
+                response = new UserResponse()
+                {
+                    userId = user.Id,
+                    Login = user.Login,
+                    Password = user.Password,
+                    Created_date = user.Created_date,
+                    GroupId = user.User_group_id,
+                    GroupCode = group.code,
+                    GroupDescription = group.description,
+                    StateId = user.User_state_id,
+                    StateCode = state.code,
+                    StateDescription = state.description
+                };
+            }
+            return response;
         }
 
         private void initDb()
@@ -150,8 +197,8 @@ namespace WebApplicationVKTest.Controllers
                     UserState blocked = new UserState()
                     {
                         id = 2,
-                         code = "Blocked",
-                         description = "Blocked user. Contact with admin"
+                        code = "Blocked",
+                        description = "Blocked user. Contact with admin"
                     };
                     db.AddRange(active, blocked);
                     db.SaveChanges();
