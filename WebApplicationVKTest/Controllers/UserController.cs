@@ -9,70 +9,153 @@ namespace WebApplicationVKTest.Controllers
     [ApiController]
     public class UserController: ControllerBase
     {
-        private PostgreContext db;
-        public UserController()
-        {
-            db = new PostgreContext("appsettings.json");
-        }
-
         [HttpPost("create")]
-        public async Task<int> CreateAsync([FromBody] CreateUserRequest createUserRequest)
+        public async Task<ActionResult<int>> CreateAsync([FromBody] CreateUserRequest createUserRequest)
         {
-            int res=0;
-            User newUser = new User()
+            using(ApplicationContext db = new ApplicationContext())
             {
-                Login = createUserRequest.Login,
-                Password = createUserRequest.Password,
-                Created_date = createUserRequest.Created_date,
-                User_group_id = createUserRequest.User_group_id,
-                User_state_id = createUserRequest.User_state_id
-            };
-            long representUserId = GetByLogin(newUser.Login);
-            if (representUserId < 0)
-            {
-                await db.Users.AddAsync(newUser);
-                res = await db.SaveChangesAsync();
+                initDb();
+                int res = 0;
+                User newUser = new User()
+                {
+                    Login = createUserRequest.Login,
+                    Password = createUserRequest.Password,
+                    Created_date = createUserRequest.Created_date,
+                    User_group_id = createUserRequest.User_group_id,
+                    User_state_id = 1
+                };
+
+                var group = db.UserGroups.Where(p => p.id == newUser.User_group_id);
+
+                if (group.Count()==0)
+                {
+                    return BadRequest(0);
+                }
+
+                long representUserId = GetByLogin(newUser.Login);
+                if (representUserId < 0)
+                {
+                    var adminUser = db.Users.Where(p => p.User_group_id == 1);
+                    if (newUser.User_group_id != 1 || adminUser.Count() == 0)
+                    {
+                        await db.Users.AddAsync(newUser);
+                        res = await db.SaveChangesAsync();
+                        Thread.Sleep(5000);
+                        return Ok(res);
+                    }
+                }
+                Thread.Sleep(5000);
+                return BadRequest(res);
             }
-            Thread.Sleep(5000);
-            return res;
+            
         }
 
         [HttpGet("get-by-id")]
-        public async Task<User> GetByIdAsync(long userId) 
+        public async Task<ActionResult<User>> GetByIdAsync(long userId) 
          {
-            return await db.Users.FindAsync(userId);
+            using (ApplicationContext db = new ApplicationContext())
+            {
+                User user = await db.Users.FindAsync(userId);
+                if (user != null)
+                {
+                    return Ok(user);
+                }
+                return BadRequest(0);
+            }
          }
 
         [HttpGet("get-all")]
-        public async Task<IList<User>> GetAllAsync()
+        public async Task<ActionResult<IList<User>>> GetAllAsync()
         {
-            return await db.Users.ToListAsync();
+            using (ApplicationContext db = new ApplicationContext())
+            {
+                IList<User> list = await db.Users.ToListAsync();
+                if (list != null)
+                {
+                    return Ok(list);
+                }
+                return BadRequest(0);
+            }
         }
 
         [HttpPut("delete")]
-        public async Task<int> DeleteAsync(long userId)
+        public async Task<ActionResult<int>> DeleteAsync(long userId)
         {
-            User user = await GetByIdAsync(userId);
-            if (user != null)
+            using (ApplicationContext db = new ApplicationContext())
             {
-                user.User_state_id = 1;
-                db.Users.Update(user);
-                return await db.SaveChangesAsync();
+                User user = await db.Users.FindAsync(userId);
+                if (user != null)
+                {
+                    user.User_state_id = 2;
+                    db.Users.Update(user);
+                    return Ok(await db.SaveChangesAsync());
+                }
+                return BadRequest(0);
             }
-            return 0;
         }
 
 
         private long GetByLogin(string login)
         {
-            var users = db.Users.Where(p => p.Login == login);
-            if (users.Count() > 0)
+            using (ApplicationContext db = new ApplicationContext())
             {
-                return users.First().Id;
+                var users = db.Users.Where(p => p.Login == login);
+                if (users.Count() > 0)
+                {
+                    return users.First().Id;
+                }
+                else
+                {
+                    return -1;
+                }
             }
-            else
+        }
+
+        private void initDb()
+        {
+            using (ApplicationContext db = new ApplicationContext())
             {
-                return -1;
+                IList<UserGroup> Groups = db.UserGroups.ToList();
+                if (Groups.Count() == 0)
+                {
+                    UserGroup admins = new UserGroup()
+                    {
+                        id = 1,
+                        code = "Admin",
+                        description = "Group of Admins"
+                    };
+
+                    UserGroup users = new UserGroup()
+                    {
+                        id = 2,
+                        code = "User",
+                        description = "Group of Users"
+                    };
+
+                    db.UserGroups.AddRange(admins, users);
+                    db.SaveChanges();
+                }
+
+
+                IList<UserState> States = db.UserStates.ToList();
+                if (States.Count() == 0)
+                {
+                    UserState active = new UserState()
+                    {
+                        id = 1,
+                        code = "Active",
+                        description = "Active user"
+                    };
+
+                    UserState blocked = new UserState()
+                    {
+                        id = 2,
+                         code = "Blocked",
+                         description = "Blocked user. Contact with admin"
+                    };
+                    db.AddRange(active, blocked);
+                    db.SaveChanges();
+                }
             }
         }
 

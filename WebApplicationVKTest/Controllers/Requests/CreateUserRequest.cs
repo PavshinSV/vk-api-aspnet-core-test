@@ -8,6 +8,5 @@ namespace WebApplicationVKTest.Controllers.Requests
         public string? Password { get; set; }
         public string? Created_date { get; set; }
         public int User_group_id { get; set; }
-        public int User_state_id { get; set; }
     }
 }

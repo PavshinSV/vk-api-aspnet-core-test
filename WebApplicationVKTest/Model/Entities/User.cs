@@ -1,6 +1,4 @@
-﻿using System.ComponentModel.DataAnnotations.Schema;
-
-namespace WebApplicationVKTest.Model.Entities
+﻿namespace WebApplicationVKTest.Model.Entities
 {
     public class User
     {

@@ -1,26 +1,29 @@
 ﻿using Microsoft.EntityFrameworkCore;
-using System.Reflection.Metadata;
 using WebApplicationVKTest.Model.Entities;
 
 namespace WebApplicationVKTest.Controllers
 {
-    public class PostgreContext: DbContext
+    public class ApplicationContext: DbContext
     {
-        public DbSet<User> Users { get; set; }= null;
-        public IConfiguration Configuration { get; }
+        public DbSet<User> Users { get; set; }
+        public DbSet<UserGroup> UserGroups { get; set; }
+        public DbSet<UserState> UserStates { get; set; }
+        
 
-
-        public PostgreContext(string settingsFile)
+        public ApplicationContext()
         {
-            Configuration = new ConfigurationBuilder().AddJsonFile(settingsFile)
-                .AddEnvironmentVariables()
-                .Build();
             Database.EnsureCreated();
         }
 
 
         protected override void OnConfiguring(DbContextOptionsBuilder optionsBuilder)
         {
+            string connectionString = "appsettings.json";
+
+            IConfiguration Configuration = new ConfigurationBuilder().AddJsonFile(connectionString)
+                .AddEnvironmentVariables()
+                .Build();
+
             optionsBuilder.UseNpgsql(Configuration.GetConnectionString("ConnectionStringDB"));
         }
 
@@ -30,5 +33,4 @@ namespace WebApplicationVKTest.Controllers
             .UseIdentityAlwaysColumn();
 
     }
-
 }
